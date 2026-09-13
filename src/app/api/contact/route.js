@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
+import { sendContactNotification, sendContactConfirmation } from '@/lib/ses';
 
 export async function POST(request) {
   try {
@@ -19,6 +20,13 @@ export async function POST(request) {
       status: 'new',
       createdAt: new Date().toISOString(),
     });
+
+    const [notification, confirmation] = await Promise.allSettled([
+      sendContactNotification({ name, email, phone, subject, message }),
+      sendContactConfirmation({ name, email }),
+    ]);
+    if (notification.status === 'rejected') console.error('Contact notification email error:', notification.reason);
+    if (confirmation.status === 'rejected') console.error('Contact confirmation email error:', confirmation.reason);
 
     return NextResponse.json({ ok: true });
   } catch (err) {
